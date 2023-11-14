@@ -44,10 +44,11 @@ type CalConf struct {
 			From time.Time `yaml:"From"`
 			To   time.Time `yaml:"To"`
 		} `yaml:"Timespan"`
-		TimeZone string     `yaml:"TimeZone"`
-		WebDAV   WebDAVConf `yaml:"WebDAV"`
-		File     FileConf   `yaml:"File"`
+		TimeZone  string     `yaml:"TimeZone"`
 		Marker    string     `yaml:"Marker"`
+		WebDAV    WebDAVConf `yaml:"WebDAV"`
+		File      FileConf   `yaml:"File"`
+		OtherCals []string   `yaml:"OtherCals"`
 	} `yaml:"Config"`
 	Week struct {
 		Sunday    []string `yaml:"Sunday"`
@@ -179,6 +180,48 @@ func main() {
 
 				if yaml.Config.File.Enable {
 					cal.AddVEvent(event)
+				}
+			}
+		}
+
+        for _, calPath := range yaml.Config.OtherCals {
+			file, err := os.Open(calPath)
+			if err != nil {
+				fmt.Println("Error opening calendar file.")
+				return
+			}
+			defer file.Close()
+
+			otherCal, err := ics.ParseCalendar(file)
+			if err != nil {
+				fmt.Println("Error parsing calendar file.")
+				return
+			}
+
+			// tmp
+			events := otherCal.Events()
+			for _, ev := range events {
+				time, _ := ev.GetStartAt()
+
+				if yaml.Config.Timespan.From.After(time) || yaml.Config.Timespan.To.Before(time) {
+					continue
+				}
+
+				ev.SetProperty(ics.ComponentPropertyUniqueId, uuid.New().String())
+
+				// data cleaning for my use case
+				currDesc := ev.GetProperty(ics.ComponentProperty(ics.PropertyDescription)).Value
+				currDesc = strings.ReplaceAll(currDesc, "\\:", ":")
+
+				ev.SetProperty(ics.ComponentPropertyDescription, currDesc+DEFAULT_SEPARATOR+yaml.Config.Marker)
+
+				if yaml.Config.WebDAV.Enable {
+					wg.Add(1)
+					go addEvent(yaml.Config.WebDAV, yaml.Config.TimeZone, ev, &wg)
+				}
+
+				if yaml.Config.File.Enable {
+					cal.AddVEvent(ev)
 				}
 			}
 		}
