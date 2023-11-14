@@ -26,6 +26,8 @@ Config:
     CalendarName: YOUR_CALENDAR
     User: YOUR_USER
     Pass: YOUR_PASSWORD
+  OtherCals:
+    - other.ical
 
 Week:
   Monday:
@@ -55,6 +57,53 @@ Week:
 
   Sunday:
     - 9:00-10:00 - some event - event description
+```
+
+## Config options
+
+#### File
+
+a group of options related to saving calendar to file on disk.
+
+```yaml
+Config:
+  File:
+    Enable: false 
+    Name: cal.ical
+```
+
+- **Enable** - true if you want to save data to the file or false if you don't. Defaults to false.
+- **Name** - name of the calendar file
+
+#### WebDAV
+
+a group of options needed to connect to the WebDAV server
+
+```yaml
+Config:
+  WebDAV:
+    Enable: true 
+    URL: https://yourCalDavServer.com/remote.php/dav/calendars/YOUR_USER
+    CalendarName: YOUR_CALENDAR
+    User: YOUR_USER
+    Pass: YOUR_PASSWORD
+```
+
+- **Enable** - true if you want to save data on the remote server or false if you don't. Defaults to false.
+- **URL** - URL to caldav server
+- **CalendarName** - name of the calendar to which cal_gen will add events
+- **User** - your username
+- **Pass** - your password in plain text (needs to be changed to sth more secure)
+
+#### OtherCals 
+
+optional list of paths to other ics/ical files which should be added to the timetable
+
+```yaml
+Config:
+  OtherCals:
+  - cal1.ical
+  - cal2.ical
 ```
 
 ## Development && Building
