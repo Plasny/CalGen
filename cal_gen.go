@@ -15,10 +15,10 @@ import (
 )
 
 type Event struct {
-	From  time.Time
-	To    time.Time
-	Title string
-	// Description string
+	From        time.Time
+	To          time.Time
+	Title       string
+	Description string
 }
 
 type WebDAVConf struct {
@@ -105,6 +105,10 @@ func main() {
 				}
 
 				event.Title = strings.Trim(arr[2], " ")
+
+				if len(arr) > 3 {
+					event.Description = strings.Trim(arr[3], " ")
+				}
 
 				// fmt.Printf("Event: %v\n  day: %v\n  from: %v\n  till: %v\n", event.Title,
 				// 	t.Field(i).Name, event.From.Format("15:04"), event.To.Format("15:04"))
