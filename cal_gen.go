@@ -14,6 +14,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const DEFAULT_MARKER = "## generated with cal_gen ##"
+const DEFAULT_SEPARATOR = "\\n\\n"
+
 type Event struct {
 	From        time.Time
 	To          time.Time
@@ -44,6 +47,7 @@ type CalConf struct {
 		TimeZone string     `yaml:"TimeZone"`
 		WebDAV   WebDAVConf `yaml:"WebDAV"`
 		File     FileConf   `yaml:"File"`
+		Marker    string     `yaml:"Marker"`
 	} `yaml:"Config"`
 	Week struct {
 		Sunday    []string `yaml:"Sunday"`
@@ -79,6 +83,10 @@ func main() {
 		}
 
 		fmt.Println("👀 Reading yaml file")
+
+		if yaml.Config.Marker == "" {
+			yaml.Config.Marker = DEFAULT_MARKER
+		}
 
 		yaml.Config.WebDAV.UrlObj, err = url.Parse(yaml.Config.WebDAV.URL)
 		if err != nil {
@@ -132,7 +140,7 @@ func main() {
 		}
 
 		if yaml.Config.WebDAV.Enable {
-			clearCalendar(yaml.Config.WebDAV, yaml.Config.Timespan.From, yaml.Config.Timespan.To)
+			clearCalendar(yaml.Config.WebDAV, yaml.Config.Timespan.From, yaml.Config.Timespan.To, yaml.Config.Marker)
 		}
 
 		if yaml.Config.WebDAV.Enable {
@@ -157,6 +165,12 @@ func main() {
 				event.SetProperty(ics.ComponentPropertyDtEnd, currentDate.Add(duration).Format("20060102T150405"), tzid)
 
 				event.SetSummary(eventData.Title)
+
+				if eventData.Description != "" {
+					event.SetDescription(eventData.Description + DEFAULT_SEPARATOR + yaml.Config.Marker)
+				} else {
+					event.SetDescription(yaml.Config.Marker)
+				}
 
 				if yaml.Config.WebDAV.Enable {
 					wg.Add(1)

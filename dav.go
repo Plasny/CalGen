@@ -12,8 +12,12 @@ import (
 	ics "github.com/arran4/golang-ical"
 )
 
-type EventURLsXML struct {
-	URLs []string `xml:"response>href"`
+type EventToDel struct {
+	Url         string `xml:"href"`
+	RawCalEvent string `xml:"propstat>prop>calendar-data"`
+}
+type EventsXML struct {
+	Events []EventToDel `xml:"response"`
 }
 
 func deleteEvent(url1, url2 string, conf WebDAVConf, wg *sync.WaitGroup) {
@@ -43,7 +47,7 @@ func deleteEvent(url1, url2 string, conf WebDAVConf, wg *sync.WaitGroup) {
 	}
 }
 
-func clearCalendar(conf WebDAVConf, start time.Time, end time.Time) error {
+func clearCalendar(conf WebDAVConf, start time.Time, end time.Time, marker string) error {
 	fmt.Println("👀 Retriving old events from server")
 
 	url := conf.URL + "/" + conf.CalendarName
@@ -54,6 +58,7 @@ func clearCalendar(conf WebDAVConf, start time.Time, end time.Time) error {
     <C:calendar-query xmlns:C='urn:ietf:params:xml:ns:caldav'>
         <D:prop xmlns:D='DAV:'>
             <D:getetag />
+            <C:calendar-data />
         </D:prop>
         <C:filter>
             <C:comp-filter name='VCALENDAR'>
@@ -96,8 +101,8 @@ func clearCalendar(conf WebDAVConf, start time.Time, end time.Time) error {
 	}
 
 	fmt.Println("📝 Parsing data")
-	urls := EventURLsXML{}
-	err = xml.Unmarshal(resBody, &urls)
+	events := EventsXML{}
+	err = xml.Unmarshal(resBody, &events)
 	if err != nil {
 		fmt.Println("Error parsing xml")
 		return err
@@ -106,9 +111,23 @@ func clearCalendar(conf WebDAVConf, start time.Time, end time.Time) error {
 	fmt.Println("❌ Removing old events")
 	url = conf.UrlObj.Scheme + "://" + conf.UrlObj.Host
 	wg := sync.WaitGroup{}
-	for _, url2 := range urls.URLs {
-		wg.Add(1)
-		go deleteEvent(url, url2, conf, &wg)
+
+	for _, event := range events.Events {
+		evCal, err := ics.ParseCalendar(strings.NewReader(event.RawCalEvent))
+		if err != nil {
+			fmt.Println("Error parsing event description")
+			continue
+		}
+
+		for _, ev := range evCal.Events() {
+			description := ev.GetProperty(ics.ComponentPropertyDescription).Value
+			if !strings.Contains(description, marker) {
+				continue
+			}
+
+			wg.Add(1)
+			go deleteEvent(url, event.Url, conf, &wg)
+		}
 	}
 
 	wg.Wait()
